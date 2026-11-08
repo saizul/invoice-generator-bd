@@ -306,3 +306,22 @@ def test_shaper_reorders_vowel_sign(bangla_font):
     assert len(glyphs) == 2
     assert shaper.width("বি", 10) > 0
     assert shaper.wrap("এক দুই তিন চার", 10, 1) == ["এক", "দুই", "তিন", "চার"]
+
+
+def test_watermark_is_drawn_on_every_page(data, tmp_path):
+    data["watermark"] = "paid"
+    data["items"] = [{"description": f"Service {n}", "quantity": 1, "unit_price": 100} for n in range(60)]
+    inv = parse_invoice(data)
+    inv.number = "INV-2026-0002"
+    assert inv.watermark == "PAID"
+    out, result = render(inv, tmp_path)
+    reader, _ = read(out)
+    assert result.pages > 1
+    for page in reader.pages:
+        assert "PAID" in (page.extract_text() or "")
+
+
+def test_no_watermark_by_default(invoice, tmp_path):
+    out, _ = render(invoice, tmp_path)
+    _, text = read(out)
+    assert "DRAFT" not in text and "PAID" not in text

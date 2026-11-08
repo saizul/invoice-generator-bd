@@ -43,6 +43,7 @@ pip install ".[all]"             # everything
 bd-invoice sample > invoice.yaml           # starter file
 bd-invoice generate invoice.yaml           # -> INV-2026-0001.pdf, counter advances
 bd-invoice generate invoice.yaml -o out/march.pdf --theme minimal
+bd-invoice generate invoice.yaml --watermark PAID   # diagonal PAID / DRAFT stamp on every page
 bd-invoice words 1234567.50                # English and Bangla words
 bd-invoice number --peek                   # what number comes next?
 bd-invoice batch examples/clients.csv --profile examples/profile.yaml --out-dir invoices/
@@ -67,12 +68,16 @@ payment: {bank: {bank_name: ...}, bkash: "01700-000000", qr: true}
 
 The amount in words is for the **net payable** (after withholdings), which is the money you expect to receive.
 
+### Watermark
+
+Set `watermark: DRAFT` (or `PAID`, `VOID`, `SAMPLE` ...) in the YAML, or pass `--watermark TEXT` to `generate` / `batch`, to print a light grey diagonal stamp across every page. The text is upper-cased, limited to 20 Latin characters, and does not hide the content underneath. The CLI flag wins over the YAML value.
+
 ### CSV batches
 
 One row per line item. Rows with the same `invoice` value become one document. Required columns:
 `buyer_name`, `description`, `unit_price`. Optional: `invoice`, `buyer_address` (use `|` for line breaks),
 `buyer_email`, `buyer_phone`, `buyer_tax_id`, `quantity`, `unit`, `discount_percent`, `issue_date`, `due_date`,
-`currency`, `vat_percent`, `ait_percent`, `reference`, `notes`, `type`, `theme`, `number`. Everything else
+`currency`, `vat_percent`, `ait_percent`, `reference`, `notes`, `type`, `theme`, `watermark`, `number`. Everything else
 (seller, payment, defaults) comes from the `--profile` YAML. A failing invoice is reported and the rest continue.
 
 ## Bangla text (fonts are not bundled)

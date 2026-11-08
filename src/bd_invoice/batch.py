@@ -20,7 +20,7 @@ PARTY_FIELDS = {
 ITEM_FIELDS = ("description", "description_bn", "quantity", "unit_price", "unit", "discount_percent")
 DOC_FIELDS = (
     "type", "number", "issue_date", "due_date", "valid_until", "payment_terms", "currency",
-    "vat_percent", "ait_percent", "notes", "reference", "theme", "language",
+    "vat_percent", "ait_percent", "notes", "reference", "theme", "language", "watermark",
 )  # fmt: skip
 
 
