@@ -1,0 +1,5 @@
+invoice,buyer_name,buyer_address,buyer_email,buyer_tax_id,description,quantity,unit_price,unit,discount_percent,issue_date,reference
+A1,Alpha Traders Ltd.,Plot 1 Motijheel|Dhaka 1000,accounts@alpha.example,1111111111111,Monthly SEO retainer,1,30000,month,,2026-03-01,PO-1
+A1,Alpha Traders Ltd.,,,,Link audit,2,4500,reports,10,2026-03-01,PO-1
+B1,Beta Studio,House 7 Agrabad|Chattogram 4100,hello@beta.example,,Landing page copywriting,3,2500,pages,,2026-03-02,
+C1,Gamma Foods,Road 9 Sylhet Sadar|Sylhet 3100,pay@gamma.example,,Google Business Profile setup,1,8000,,,2026-03-03,

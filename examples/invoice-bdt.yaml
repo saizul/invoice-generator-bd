@@ -1,0 +1,58 @@
+# Invoice for a Bangladeshi agency: BDT, 15% VAT, 5% AIT withheld by the client.
+# language: both adds Bangla text when you pass --bangla-font (needs `pip install "bd-invoice[bangla]"`).
+type: invoice
+currency: BDT
+issue_date: 2026-03-01
+payment_terms: Net 15            # due date = issue date + 15 days (or set due_date explicitly)
+theme: modern                    # minimal | modern
+language: both                   # en | both
+vat_percent: 15
+ait_percent: 5                   # Advance Income Tax withheld by the client, on the taxable amount
+reference: PO-2026-114
+seller:
+  name: Example Digital Agency
+  name_bn: এক্সাম্পল ডিজিটাল এজেন্সি
+  address:
+    - House 1, Road 2, Dhanmondi
+    - Dhaka 1209
+  email: billing@example.com
+  phone: "+880 1700-000000"
+  tax_id: "0000000000000"        # BIN
+buyer:
+  name: Sample Client Ltd.
+  name_bn: স্যাম্পল ক্লায়েন্ট লিমিটেড
+  address:
+    - Plot 5, Gulshan Avenue
+    - Dhaka 1212
+items:
+  - description: SEO audit and keyword research
+    description_bn: এসইও অডিট ও কীওয়ার্ড রিসার্চ
+    quantity: 1
+    unit_price: 25000
+  - description: Monthly blog content writing
+    quantity: 4
+    unit: articles
+    unit_price: 3500.50
+  - description: Technical fixes (Core Web Vitals)
+    quantity: 6
+    unit: hours
+    unit_price: 1200
+    discount_percent: 10
+discount:
+  type: percent
+  value: 5
+  label: Loyalty discount
+payment:
+  bank:
+    bank_name: Example Bank PLC
+    account_name: Example Digital Agency
+    account_number: "0000000000000"
+    branch: Dhanmondi
+    routing_number: "000000000"
+  bkash: "01700-000000 (Merchant)"
+  nagad: "01800-000000 (Merchant)"
+  qr: true                       # needs `pip install "bd-invoice[qr]"`; encodes a plain-text payment reference
+notes: Please quote the invoice number when paying. Thank you for your business.
+terms:
+  - Payment is due within 15 days of the invoice date.
+  - AIT is deducted at source; please share the challan copy.

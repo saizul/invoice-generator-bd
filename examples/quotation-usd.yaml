@@ -1,0 +1,31 @@
+# Quotation in USD for an overseas client (no VAT, no withholding), minimal theme.
+type: quotation
+currency: USD
+issue_date: 2026-03-05
+valid_days: 30
+theme: minimal
+seller:
+  name: Example Digital Agency
+  address: ["House 1, Road 2, Dhanmondi", "Dhaka 1209, Bangladesh"]
+  email: hello@example.com
+buyer:
+  name: Northwind Sample Inc.
+  address: ["100 Example Street", "Springfield, USA"]
+items:
+  - description: WordPress site speed optimisation
+    quantity: 1
+    unit_price: 450
+  - description: Monthly technical SEO retainer
+    quantity: 3
+    unit: months
+    unit_price: 600
+discount:
+  type: fixed
+  value: 100
+  label: Launch discount
+payment:
+  bank:
+    bank_name: Example Bank PLC
+    swift: EXAMPLEBD
+    account_number: "0000000000000"
+notes: Prices are valid for the period shown. Work starts on written acceptance.
