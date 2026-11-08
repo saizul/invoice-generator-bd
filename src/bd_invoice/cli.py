@@ -189,7 +189,9 @@ def add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--bangla-font", help=f"path to a Bangla TTF (or set {FONT_ENV})")
     p.add_argument("--theme", choices=("minimal", "modern"), help="override the theme")
     p.add_argument(
-        "--watermark", metavar="TEXT", help="diagonal stamp on every page, e.g. PAID or DRAFT (overrides the YAML)"
+        "--watermark",
+        metavar="TEXT",
+        help="diagonal stamp on every page, e.g. PAID or DRAFT (overrides the YAML)",
     )
 
 
