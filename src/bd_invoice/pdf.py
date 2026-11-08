@@ -138,6 +138,7 @@ class NumberedCanvas(rl_canvas.Canvas):
     """Canvas that can print 'Page x of y' by deferring page output until the total is known."""
 
     footer_text = ""
+    watermark = ""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -155,7 +156,20 @@ class NumberedCanvas(rl_canvas.Canvas):
             super().showPage()
         super().save()
 
+    def _draw_watermark(self):
+        self.saveState()
+        self.setFillColor(colors.HexColor("#b0b0b0"))
+        self.setFillAlpha(0.22)
+        size = min(110.0, 520.0 / max(len(self.watermark), 1) * 1.6)
+        self.setFont("Helvetica-Bold", size)
+        self.translate(PAGE_W / 2, PAGE_H / 2)
+        self.rotate(45)
+        self.drawCentredString(0, -size * 0.35, self.watermark)
+        self.restoreState()
+
     def _draw_footer(self, total: int):
+        if self.watermark:
+            self._draw_watermark()
         self.setFont("Helvetica", 8)
         self.setFillColor(colors.HexColor("#777777"))
         self.drawString(MARGIN, 10 * mm, self.footer_text)
@@ -505,6 +519,7 @@ def render_invoice(
         footer_text = f"{inv.title.title()} {inv.number}  |  {inv.seller.name}"[:110]
 
     Canvas.footer_text = latin_safe(Canvas.footer_text)
+    Canvas.watermark = inv.watermark
     out = Path(out_path)
     out.parent.mkdir(parents=True, exist_ok=True)
     doc = SimpleDocTemplate(

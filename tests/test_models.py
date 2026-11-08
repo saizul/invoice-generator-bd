@@ -191,3 +191,14 @@ def test_language_validation(data):
     data["language"] = "fr"
     with pytest.raises(InvoiceError, match="language"):
         parse_invoice(data)
+
+
+def test_watermark_is_normalised_and_validated():
+    from bd_invoice.models import parse_watermark
+
+    assert parse_watermark(None) == ""
+    assert parse_watermark("  draft ") == "DRAFT"
+    with pytest.raises(InvoiceError, match="at most 20"):
+        parse_watermark("x" * 21)
+    with pytest.raises(InvoiceError, match="Latin"):
+        parse_watermark("পরিশোধিত")

@@ -88,6 +88,7 @@ class Invoice:
     logo: str = ""
     language: str = "en"  # "en" or "both" (adds Bangla when a font is supplied)
     reference: str = ""  # buyer PO / reference
+    watermark: str = ""  # diagonal page stamp such as PAID or DRAFT
 
     @property
     def title(self) -> str:
@@ -99,6 +100,21 @@ def _need(data: dict, key: str, where: str):
     if value is None or (isinstance(value, str) and not value.strip()):
         raise InvoiceError(f"{where}: '{key}' is required")
     return value
+
+
+WATERMARK_MAX = 20
+
+
+def parse_watermark(value) -> str:
+    """Normalise a watermark label (upper case, Latin text only, at most 20 characters)."""
+    text = str(value or "").strip().upper()
+    if len(text) > WATERMARK_MAX:
+        raise InvoiceError(f"watermark: at most {WATERMARK_MAX} characters, got {len(text)}")
+    try:
+        text.encode("cp1252")
+    except UnicodeEncodeError:
+        raise InvoiceError("watermark: use Latin characters only (for example PAID or DRAFT)") from None
+    return text
 
 
 def parse_date(value, field_name: str) -> dt.date:
@@ -298,4 +314,5 @@ def parse_invoice(data: dict, number: str | None = None) -> Invoice:
         logo=str(data.get("logo") or "").strip(),
         language=language,
         reference=str(data.get("reference") or "").strip(),
+        watermark=parse_watermark(data.get("watermark")),
     )

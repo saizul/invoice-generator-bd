@@ -14,7 +14,7 @@ import yaml
 
 from . import __version__
 from .batch import load_csv
-from .models import InvoiceError, parse_invoice
+from .models import InvoiceError, parse_invoice, parse_watermark
 from .numbering import (
     DEFAULT_PATTERN,
     QUOTE_PATTERN,
@@ -35,6 +35,7 @@ currency: BDT                  # BDT, USD, EUR, GBP ...
 issue_date: 2026-03-01
 payment_terms: Net 15          # due date = issue date + 15 days (or set due_date)
 theme: modern                  # minimal | modern
+# watermark: DRAFT             # optional diagonal stamp on every page (PAID, DRAFT ...)
 language: en                   # en | both (adds Bangla when --bangla-font is given)
 vat_percent: 15
 ait_percent: 5                 # Advance Income Tax withheld by the client
@@ -108,6 +109,8 @@ def build_one(data: dict, args, out_path: str | None, base_dir: str) -> tuple:
     inv.number = number
     if args.theme:
         inv.theme = args.theme
+    if args.watermark:
+        inv.watermark = parse_watermark(args.watermark)
     target = out_path or str(Path(args.out_dir or ".") / f"{safe_filename(number)}.pdf")
     result = render_invoice(inv, target, _font_from(args, data), base_dir)
     return inv, result
@@ -185,6 +188,9 @@ def add_common(p: argparse.ArgumentParser) -> None:
     p.add_argument("--no-count", action="store_true", help="peek the number, do not advance the counter")
     p.add_argument("--bangla-font", help=f"path to a Bangla TTF (or set {FONT_ENV})")
     p.add_argument("--theme", choices=("minimal", "modern"), help="override the theme")
+    p.add_argument(
+        "--watermark", metavar="TEXT", help="diagonal stamp on every page, e.g. PAID or DRAFT (overrides the YAML)"
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

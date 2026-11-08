@@ -165,3 +165,19 @@ def test_font_from_environment(data, tmp_path, monkeypatch, capsys):
 )
 def test_safe_filename(raw, expected):
     assert safe_filename(raw) == expected
+
+
+def test_watermark_flag_overrides_yaml(data, tmp_path):
+    data["watermark"] = "DRAFT"
+    src = write_yaml(tmp_path, data)
+    out = tmp_path / "w.pdf"
+    assert main(["generate", str(src), "-o", str(out), "--no-count", "--watermark", "paid"]) == 0
+    text = "\n".join(p.extract_text() or "" for p in pypdf.PdfReader(str(out)).pages)
+    assert "PAID" in text and "DRAFT" not in text
+
+
+def test_watermark_flag_rejects_non_latin(data, tmp_path, capsys):
+    src = write_yaml(tmp_path, data)
+    code = main(["generate", str(src), "-o", str(tmp_path / "x.pdf"), "--no-count", "--watermark", "পরিশোধ"])
+    assert code == 2
+    assert "Latin" in capsys.readouterr().err
