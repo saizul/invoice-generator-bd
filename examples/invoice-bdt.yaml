@@ -42,6 +42,9 @@ discount:
   type: percent
   value: 5
   label: Loyalty discount
+# Money already received (uncomment to show "Paid" rows and the balance due):
+# payments:
+#   - {date: 2026-03-05, amount: 10000, method: bKash, reference: TXN123}
 payment:
   bank:
     bank_name: Example Bank PLC

@@ -65,6 +65,25 @@ class PaymentInfo:
 
 
 @dataclass
+class Payment:
+    """Money already received against an invoice (an advance or a part payment)."""
+
+    amount: Decimal
+    date: dt.date | None = None
+    method: str = ""  # bKash, Bank transfer, Cash ...
+    reference: str = ""  # transaction id, cheque number ...
+
+    @property
+    def label(self) -> str:
+        """Row label for the totals block: 'Paid 2026-03-05 (bKash)'."""
+        text = "Paid"
+        if self.date is not None:
+            text += f" {self.date.isoformat()}"
+        detail = ", ".join(part for part in (self.method, self.reference) if part)
+        return f"{text} ({detail})" if detail else text
+
+
+@dataclass
 class Invoice:
     doc_type: str
     number: str
@@ -89,6 +108,7 @@ class Invoice:
     language: str = "en"  # "en" or "both" (adds Bangla when a font is supplied)
     reference: str = ""  # buyer PO / reference
     watermark: str = ""  # diagonal page stamp such as PAID or DRAFT
+    payments: list = field(default_factory=list)  # Payment records: advances / part payments
 
     @property
     def title(self) -> str:
@@ -235,6 +255,42 @@ def parse_payment(data) -> PaymentInfo:
     )
 
 
+def parse_payments(data: dict) -> list:
+    """Read money already received: a `payments:` list and/or the `paid:` shorthand amount.
+
+    `payments` entries are mappings with `amount` and optional `date`, `method`, `reference`
+    (a bare number is accepted too). `paid: 5000` is a shorthand for one undated payment.
+    Zero amounts are dropped; payments are returned in date order (undated ones first).
+    """
+    out = []
+    shorthand = data.get("paid")
+    if shorthand not in (None, ""):
+        if isinstance(shorthand, (dict, list, tuple)):
+            raise InvoiceError("paid: expected an amount (use 'payments' for a detailed list)")
+        out.append(Payment(_decimal(shorthand, "paid", Decimal(0))))
+    raw = data.get("payments")
+    if raw in (None, ""):
+        raw = []
+    if not isinstance(raw, (list, tuple)):
+        raise InvoiceError("payments: expected a list")
+    for i, entry in enumerate(raw):
+        where = f"payments[{i}]"
+        if not isinstance(entry, dict):
+            entry = {"amount": entry}
+        date = entry.get("date")
+        out.append(
+            Payment(
+                amount=_decimal(_need(entry, "amount", where), f"{where}.amount", Decimal(0)),
+                date=parse_date(date, f"{where}.date") if date not in (None, "") else None,
+                method=str(entry.get("method") or "").strip(),
+                reference=str(entry.get("reference") or "").strip(),
+            )
+        )
+    out = [p for p in out if p.amount > 0]
+    out.sort(key=lambda p: p.date or dt.date.min)
+    return out
+
+
 def parse_terms_days(text: str) -> int | None:
     """'Net 15' / 'Due in 30 days' -> 15 / 30; 'Due on receipt' -> 0."""
     lowered = text.lower()
@@ -290,6 +346,10 @@ def parse_invoice(data: dict, number: str | None = None) -> Invoice:
             days = int(_decimal(data.get("valid_days", 30), "valid_days", Decimal(0)))
             valid = issue + dt.timedelta(days=days)
 
+    payments = parse_payments(data)
+    if payments and doc_type != "invoice":
+        raise InvoiceError("payments/paid: only invoices can record payments, not quotations")
+
     final_number = number or str(data.get("number") or "").strip()
     return Invoice(
         doc_type=doc_type,
@@ -315,4 +375,5 @@ def parse_invoice(data: dict, number: str | None = None) -> Invoice:
         language=language,
         reference=str(data.get("reference") or "").strip(),
         watermark=parse_watermark(data.get("watermark")),
+        payments=payments,
     )
