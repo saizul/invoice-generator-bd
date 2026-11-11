@@ -23,6 +23,8 @@ Bangla) and [`examples/sample-quotation.pdf`](examples/sample-quotation.pdf) (US
 - **Numbering**: `INV-{YYYY}-{seq:04}` style patterns with a local JSON counter file that resets
   never/yearly/monthly; quotations use their own `QT-` counter.
 - **Due date / validity**: `payment_terms: Net 15` or an explicit date; quotations get `valid_until`.
+- **Payments received**: record an advance or part payments (`paid:` / `payments:` / `--paid`) and the
+  invoice shows each one and the **balance due**.
 - **Payment block** (text only): bank, bKash, Nagad and free lines; optional QR with a payment reference.
 - **Themes**: `minimal` and `modern` (with a custom `accent` colour). Logo image support.
 - **Batch**: one CSV (a row per line item) plus a YAML profile produces many PDFs.
@@ -44,6 +46,7 @@ bd-invoice sample > invoice.yaml           # starter file
 bd-invoice generate invoice.yaml           # -> INV-2026-0001.pdf, counter advances
 bd-invoice generate invoice.yaml -o out/march.pdf --theme minimal
 bd-invoice generate invoice.yaml --watermark PAID   # diagonal PAID / DRAFT stamp on every page
+bd-invoice generate invoice.yaml --paid 10000       # advance received: shows "Paid" and "Balance due"
 bd-invoice words 1234567.50                # English and Bangla words
 bd-invoice number --peek                   # what number comes next?
 bd-invoice batch examples/clients.csv --profile examples/profile.yaml --out-dir invoices/
@@ -72,12 +75,40 @@ The amount in words is for the **net payable** (after withholdings), which is th
 
 Set `watermark: DRAFT` (or `PAID`, `VOID`, `SAMPLE` ...) in the YAML, or pass `--watermark TEXT` to `generate` / `batch`, to print a light grey diagonal stamp across every page. The text is upper-cased, limited to 20 Latin characters, and does not hide the content underneath. The CLI flag wins over the YAML value.
 
+### Payments received and balance due
+
+Record money you have already received (an advance, or part payments) and the invoice shows it under the
+totals, followed by a **Balance due** row:
+
+```yaml
+paid: 10000                    # shorthand: one payment, no details
+# or a detailed list (both can be combined):
+payments:
+  - {date: 2026-03-05, amount: 10000, method: bKash, reference: TXN123}
+  - {date: 2026-03-12, amount: 5000, method: Bank transfer}
+```
+
+```bash
+bd-invoice generate invoice.yaml --paid 10000   # add a payment without editing the YAML
+bd-invoice generate invoice.yaml --paid full --watermark PAID   # settle whatever is still due
+```
+
+- Payments are deducted from the **net payable** (after VAT and AIT/withholdings), in date order.
+- Each payment gets its own row, for example `Paid 2026-03-05 (bKash, TXN123)`; with more than four
+  payments they are combined into one `Paid (n payments)` row.
+- With a balance left, the amount in words and the QR reference use the **balance due**
+  ("BALANCE DUE IN WORDS"). When the invoice is paid in full the words block reads "AMOUNT PAID IN WORDS".
+- Payments that add up to more than the net payable are rejected (before an invoice number is issued).
+  Quotations cannot record payments.
+- In CSV batches use a `paid` column (read from the first row of each invoice); `--paid` applies to every
+  invoice in the batch, so `--paid full` re-issues a whole batch as settled.
+
 ### CSV batches
 
 One row per line item. Rows with the same `invoice` value become one document. Required columns:
 `buyer_name`, `description`, `unit_price`. Optional: `invoice`, `buyer_address` (use `|` for line breaks),
 `buyer_email`, `buyer_phone`, `buyer_tax_id`, `quantity`, `unit`, `discount_percent`, `issue_date`, `due_date`,
-`currency`, `vat_percent`, `ait_percent`, `reference`, `notes`, `type`, `theme`, `watermark`, `number`. Everything else
+`currency`, `vat_percent`, `ait_percent`, `reference`, `notes`, `type`, `theme`, `watermark`, `paid`, `number`. Everything else
 (seller, payment, defaults) comes from the `--profile` YAML. A failing invoice is reported and the rest continue.
 
 ## Bangla text (fonts are not bundled)

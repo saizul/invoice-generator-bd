@@ -7,6 +7,9 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Payments received: `paid` / `payments` fields, a `--paid AMOUNT|full` option and a `paid` CSV column.
+  The PDF lists each payment under the totals and shows the balance due (in figures, in words and in the
+  QR reference); overpayments are rejected before a number is issued.
 - `watermark` field and `--watermark TEXT` option: a diagonal PAID / DRAFT / VOID stamp on every page.
 
 ## [0.1.0] - 2026-11-08

@@ -44,6 +44,7 @@ DEFAULT_ACCENTS = {"minimal": "#222222", "modern": "#0f766e"}
 PAGE_W, PAGE_H = A4
 MARGIN = 18 * mm
 CONTENT_W = PAGE_W - 2 * MARGIN
+MAX_PAYMENT_ROWS = 4  # more payments than this are summarised in one "Paid (n payments)" row
 
 
 @dataclass
@@ -411,6 +412,14 @@ class Renderer:
         if t.deductions:
             title = "Net payable" if inv.doc_type == "invoice" else "Net amount"
             rows.append((title, self.money(t.net_payable), True))
+        if t.payments:
+            if len(t.payments) <= MAX_PAYMENT_ROWS:
+                for label, amount in t.payments:
+                    rows.append((label, "-" + self.money(amount), False))
+            else:
+                label = f"Paid ({len(t.payments)} payments)"
+                rows.append((label, "-" + self.money(t.paid), False))
+            rows.append(("Balance due", self.money(t.balance_due), True))
         data = [
             [self.para(self.tx(label, "totals"), "bold" if bold else "body"),
              self.para(value, "bold_right" if bold else "right")]
@@ -430,6 +439,10 @@ class Renderer:
         inv, t = self.inv, self.t
         amount = t.net_payable
         label = "AMOUNT PAYABLE IN WORDS" if inv.doc_type == "invoice" else "TOTAL IN WORDS"
+        if t.payment_status == "partial":
+            amount, label = t.balance_due, "BALANCE DUE IN WORDS"
+        elif t.payment_status == "paid":
+            label = "AMOUNT PAID IN WORDS"
         out: list = [self.para(label, "label"),
                      self.para(escape(amount_in_words(amount, inv.currency, "en")), "bold")]  # fmt: skip
         if inv.language == "both" and self.shaper:
@@ -476,7 +489,7 @@ class Renderer:
         if self.inv.payment.qr_payload:
             return self.inv.payment.qr_payload
         inv = self.inv
-        return f"REF:{inv.number}|AMT:{self.t.net_payable:.2f}|CUR:{inv.currency}|PAYEE:{inv.seller.name}"
+        return f"REF:{inv.number}|AMT:{self.t.balance_due:.2f}|CUR:{inv.currency}|PAYEE:{inv.seller.name}"
 
     def notes(self) -> list:
         out: list = []

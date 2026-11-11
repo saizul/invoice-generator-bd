@@ -14,7 +14,9 @@ import yaml
 
 from . import __version__
 from .batch import load_csv
-from .models import InvoiceError, parse_invoice, parse_watermark
+from .calc import compute_totals
+from .models import InvoiceError, Payment, parse_invoice, parse_watermark
+from .money import to_decimal
 from .numbering import (
     DEFAULT_PATTERN,
     QUOTE_PATTERN,
@@ -36,6 +38,9 @@ issue_date: 2026-03-01
 payment_terms: Net 15          # due date = issue date + 15 days (or set due_date)
 theme: modern                  # minimal | modern
 # watermark: DRAFT             # optional diagonal stamp on every page (PAID, DRAFT ...)
+# paid: 10000                  # advance already received; or a detailed list:
+# payments:
+#   - {date: 2026-03-05, amount: 10000, method: bKash, reference: TXN123}
 language: en                   # en | both (adds Bangla when --bangla-font is given)
 vat_percent: 15
 ait_percent: 5                 # Advance Income Tax withheld by the client
@@ -103,8 +108,29 @@ def assign_number(data: dict, args) -> tuple:
     return fn(args.counter_file, pattern, reset, issue), not args.no_count
 
 
+def apply_paid_option(inv, value: str) -> None:
+    """Apply `--paid`: an amount adds one payment; `full` settles whatever is still due."""
+    if inv.doc_type != "invoice":
+        raise InvoiceError("--paid: only invoices can record payments, not quotations")
+    text = value.strip().lower()
+    if text in ("full", "all"):
+        amount = compute_totals(inv).balance_due
+    else:
+        try:
+            amount = to_decimal(value, "--paid")
+        except ValueError as exc:
+            raise InvoiceError(f"{exc} (use an amount or 'full')") from None
+        if amount < 0:
+            raise InvoiceError(f"--paid: must be >= 0, got {amount}")
+    if amount > 0:
+        inv.payments.append(Payment(amount))
+
+
 def build_one(data: dict, args, out_path: str | None, base_dir: str) -> tuple:
     inv = parse_invoice(data)  # validate before spending a counter value
+    if getattr(args, "paid", None):
+        apply_paid_option(inv, args.paid)
+    compute_totals(inv)  # rejects payments above the net payable before a number is issued
     number, _ = assign_number(data, args)
     inv.number = number
     if args.theme:
@@ -120,11 +146,12 @@ def report(inv, result, out) -> None:
     from .money import format_money
 
     t = result.totals
-    print(
-        f"wrote {result.path}  [{inv.number}  {format_money(t.net_payable, inv.currency)}  "
-        f"{result.pages} page(s)]",
-        file=out,
-    )
+    amount = format_money(t.net_payable, inv.currency)
+    if t.payment_status == "partial":
+        amount += f"  balance due {format_money(t.balance_due, inv.currency)}"
+    elif t.payment_status == "paid":
+        amount += "  paid in full"
+    print(f"wrote {result.path}  [{inv.number}  {amount}  {result.pages} page(s)]", file=out)
     for w in result.warnings:
         print(f"warning: {w}", file=sys.stderr)
 
@@ -192,6 +219,11 @@ def add_common(p: argparse.ArgumentParser) -> None:
         "--watermark",
         metavar="TEXT",
         help="diagonal stamp on every page, e.g. PAID or DRAFT (overrides the YAML)",
+    )
+    p.add_argument(
+        "--paid",
+        metavar="AMOUNT",
+        help="record a payment already received (an amount, or 'full'); the PDF shows the balance due",
     )
 
 
