@@ -28,6 +28,8 @@ Bangla) and [`examples/sample-quotation.pdf`](examples/sample-quotation.pdf) (US
 - **Payment block** (text only): bank, bKash, Nagad and free lines; optional QR with a payment reference.
 - **Themes**: `minimal` and `modern` (with a custom `accent` colour). Logo image support.
 - **Batch**: one CSV (a row per line item) plus a YAML profile produces many PDFs.
+- **Sales register and receivables**: `--register sales.csv` logs every document issued; `bd-invoice summary`
+  totals sales, VAT and withholdings for a period and ages unpaid balances (current, 1-30 ... 90+ days).
 - Multi-page tables with repeated headers and "Page x of y" footers.
 
 ## Install
@@ -110,6 +112,32 @@ One row per line item. Rows with the same `invoice` value become one document. R
 `buyer_email`, `buyer_phone`, `buyer_tax_id`, `quantity`, `unit`, `discount_percent`, `issue_date`, `due_date`,
 `currency`, `vat_percent`, `ait_percent`, `reference`, `notes`, `type`, `theme`, `watermark`, `paid`, `number`. Everything else
 (seller, payment, defaults) comes from the `--profile` YAML. A failing invoice is reported and the rest continue.
+
+### Sales register and receivables summary
+
+Add `--register FILE` to `generate` or `batch` and every document written is appended to a CSV register
+(created with a header on first use):
+
+```bash
+bd-invoice batch clients.csv --profile profile.yaml --register sales-2026.csv
+bd-invoice generate invoice.yaml --paid full --register sales-2026.csv   # re-issue as settled
+
+bd-invoice summary sales-2026.csv --from 2026-03-01 --to 2026-03-31     # e.g. for the monthly VAT return
+bd-invoice summary sales-2026.csv --as-of 2026-04-15 --json
+```
+
+Columns: `number`, `type`, `issue_date`, `due_date` (validity date for quotations), `buyer`, `buyer_tax_id`,
+`reference`, `currency`, `subtotal`, `discount`, `taxable`, `vat`, `total`, `deductions`, `net_payable`, `paid`,
+`balance_due`, `status` (`unpaid` / `partial` / `paid` / `quotation`) and `file`.
+
+- Only documents that were actually rendered are recorded; a rejected invoice in a batch leaves no row.
+- `summary` groups by currency, sums invoices issued in the `--from`/`--to` window (quotations are only
+  counted), and ages each unpaid balance by days past its due date as of `--as-of` (default today).
+  Invoices without a due date count as current.
+- When the same number appears more than once (for example after re-issuing with `--paid`), the last row
+  wins, so the register doubles as a simple payment log.
+- Text cells that start with `=`, `+`, `-` or `@` are prefixed with `'` so spreadsheets do not run them as
+  formulas, and `--register` refuses to append to an existing CSV whose header is not a register's.
 
 ## Bangla text (fonts are not bundled)
 

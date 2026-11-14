@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import os
 import re
 import sys
@@ -26,6 +27,7 @@ from .numbering import (
     peek_number,
 )
 from .pdf import render_invoice
+from .register import AGING_BUCKETS, append_rows, read_register, register_row, summarize
 from .words import amount_in_words
 
 DEFAULT_COUNTER = ".bd-invoice-counter.json"
@@ -139,6 +141,8 @@ def build_one(data: dict, args, out_path: str | None, base_dir: str) -> tuple:
         inv.watermark = parse_watermark(args.watermark)
     target = out_path or str(Path(args.out_dir or ".") / f"{safe_filename(number)}.pdf")
     result = render_invoice(inv, target, _font_from(args, data), base_dir)
+    if getattr(args, "register", None):
+        append_rows(args.register, [register_row(inv, result.totals, result.path)])
     return inv, result
 
 
@@ -203,6 +207,48 @@ def cmd_number(args) -> int:
     return 0
 
 
+def _iso_arg(value: str | None, flag: str) -> dt.date | None:
+    if not value:
+        return None
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError:
+        raise InvoiceError(f"{flag}: expected a date like 2026-01-31, got {value!r}") from None
+
+
+def cmd_summary(args) -> int:
+    from .money import format_money
+
+    as_of = _iso_arg(args.as_of, "--as-of") or dt.date.today()
+    summaries = summarize(
+        read_register(args.file),
+        as_of,
+        _iso_arg(getattr(args, "from"), "--from"),
+        _iso_arg(args.to, "--to"),
+    )
+    if args.json:
+        payload = {"as_of": as_of.isoformat(), "currencies": [s.as_dict() for s in summaries]}
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        return 0
+    if not summaries:
+        print("no documents in the selected period")
+        return 0
+    for s in summaries:
+        money = lambda v, cur=s.currency: format_money(v, cur)  # noqa: E731
+        t = s.totals
+        print(f"{s.currency}: {s.invoices} invoice(s), {s.quotations} quotation(s)  [as of {as_of}]")
+        print(f"  taxable      {money(t['taxable'])}")
+        print(f"  VAT          {money(t['vat'])}")
+        print(f"  deductions   {money(t['deductions'])}")
+        print(f"  net payable  {money(t['net_payable'])}")
+        print(f"  received     {money(t['paid'])}")
+        print(f"  outstanding  {money(s.outstanding)}  (overdue {money(s.overdue)})")
+        print("  aging        " + "  ".join(f"{b}: {money(s.aging[b])}" for b in AGING_BUCKETS))
+        for number, buyer, days, balance in s.overdue_documents:
+            print(f"    overdue {days:>4} day(s)  {number}  {buyer}  {money(balance)}")
+    return 0
+
+
 def cmd_sample(args) -> int:
     sys.stdout.write(SAMPLE_YAML)
     return 0
@@ -219,6 +265,11 @@ def add_common(p: argparse.ArgumentParser) -> None:
         "--watermark",
         metavar="TEXT",
         help="diagonal stamp on every page, e.g. PAID or DRAFT (overrides the YAML)",
+    )
+    p.add_argument(
+        "--register",
+        metavar="CSV",
+        help="append a row per generated document to this sales register (see `summary`)",
     )
     p.add_argument(
         "--paid",
@@ -258,6 +309,14 @@ def build_parser() -> argparse.ArgumentParser:
     n.add_argument("--number-pattern")
     n.add_argument("--reset", choices=RESETS)
     n.set_defaults(func=cmd_number)
+
+    r = sub.add_parser("summary", help="sales, VAT and receivables aging from a --register CSV")
+    r.add_argument("file", help="register CSV written with --register")
+    r.add_argument("--as-of", help="date used for aging (default today)")
+    r.add_argument("--from", help="only documents issued on or after this date")
+    r.add_argument("--to", help="only documents issued on or before this date")
+    r.add_argument("--json", action="store_true", help="print machine-readable JSON")
+    r.set_defaults(func=cmd_summary)
 
     s = sub.add_parser("sample", help="print a sample invoice YAML")
     s.set_defaults(func=cmd_sample)
