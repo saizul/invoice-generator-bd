@@ -11,6 +11,12 @@ All notable changes to this project are documented here. The format follows
   The PDF lists each payment under the totals and shows the balance due (in figures, in words and in the
   QR reference); overpayments are rejected before a number is issued.
 - `watermark` field and `--watermark TEXT` option: a diagonal PAID / DRAFT / VOID stamp on every page.
+- Sales register: `--register FILE` on `generate` and `batch` appends one CSV row per rendered document
+  (number, dates, buyer and BIN, subtotal, discount, taxable, VAT, deductions, net payable, paid, balance
+  due, status, file). Formula-like text cells are neutralised and foreign CSV files are never appended to.
+- `bd-invoice summary REGISTER [--from DATE] [--to DATE] [--as-of DATE] [--json]`: per-currency sales, VAT
+  and withholding totals for a period, outstanding and overdue balances, aging buckets (current, 1-30,
+  31-60, 61-90, 90+ days) and the list of overdue invoices.
 
 ## [0.1.0] - 2026-11-08
 
